@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fintech Data Pipeline — Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --panel: #111827;
+    --panel2: #1a2235;
+    --border: #1f2d45;
+    --accent: #00d4aa;
+    --accent2: #3b82f6;
+    --accent3: #f59e0b;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --success: #10b981;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1.1rem; font-weight: 800; letter-spacing: 0.04em;
+  }
+  .topbar .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  .topbar .tabs { display: flex; gap: 4px; }
+  .topbar .tab {
+    padding: 6px 16px; border-radius: 6px; cursor: pointer;
+    font-size: 0.82rem; font-weight: 600; letter-spacing: 0.03em;
+    color: var(--muted); transition: all 0.2s;
+  }
+  .topbar .tab:hover { color: var(--text); background: var(--panel2); }
+  .topbar .tab.active { color: var(--accent); background: rgba(0,212,170,0.1); }
+  .topbar .status {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.78rem; font-family: 'DM Mono', monospace; color: var(--muted);
+  }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* LAYOUT */
+  .main { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* KPI CARDS */
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .kpi-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: var(--accent2); }
+  .kpi-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .kpi-card.green::before { background: var(--accent); }
+  .kpi-card.blue::before  { background: var(--accent2); }
+  .kpi-card.amber::before { background: var(--accent3); }
+  .kpi-card.red::before   { background: var(--red); }
+  .kpi-card.purple::before{ background: #a855f7; }
+  .kpi-label { font-size: 0.72rem; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .kpi-value { font-size: 2rem; font-weight: 800; margin: 6px 0 2px; }
+  .kpi-sub { font-size: 0.73rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* GRID ROW */
+  .grid-row { display: grid; gap: 16px; }
+  .grid-row.two { grid-template-columns: 2fr 1fr; }
+  .grid-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-row.half { grid-template-columns: 1fr 1fr; }
+
+  /* PANEL */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-title { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.03em; }
+  .panel-badge {
+    font-size: 0.68rem; font-family: 'DM Mono', monospace;
+    background: rgba(0,212,170,0.12); color: var(--accent);
+    padding: 3px 8px; border-radius: 4px;
+  }
+  .panel-body { padding: 16px 20px; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th {
+    text-align: left; padding: 8px 10px;
+    font-size: 0.68rem; font-weight: 700; color: var(--muted);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 9px 10px; border-bottom: 1px solid rgba(31,45,69,0.5); font-family: 'DM Mono', monospace; font-size: 0.76rem; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* BADGE */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px; font-size: 0.68rem; font-weight: 600;
+    font-family: 'DM Mono', monospace;
+  }
+  .badge.raw    { background: rgba(59,130,246,0.15); color: #93c5fd; }
+  .badge.masked { background: rgba(0,212,170,0.12); color: var(--accent); }
+  .badge.ok     { background: rgba(16,185,129,0.12); color: #6ee7b7; }
+  .badge.warn   { background: rgba(245,158,11,0.12); color: #fcd34d; }
+  .badge.error  { background: rgba(239,68,68,0.12); color: #fca5a5; }
+  .badge.role-de{ background: rgba(168,85,247,0.12); color: #c4b5fd; }
+  .badge.role-sd{ background: rgba(59,130,246,0.12); color: #93c5fd; }
+
+  /* SVG CHARTS */
+  .chart-wrap { position: relative; }
+  svg text { font-family: 'DM Mono', monospace; }
+
+  /* BAR CHART */
+  .bar { transition: opacity 0.2s; cursor: pointer; }
+  .bar:hover { opacity: 0.8; }
+
+  /* DONUT */
+  .donut-wrap { display: flex; align-items: center; gap: 24px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { color: var(--muted); }
+  .legend-val { font-weight: 700; margin-left: auto; font-family: 'DM Mono', monospace; }
+
+  /* PROGRESS BAR */
+  .progress-row { margin-bottom: 14px; }
+  .progress-info { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.78rem; }
+  .progress-bar { background: var(--border); border-radius: 99px; height: 7px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+
+  /* SPARKLINE */
+  .sparkline-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .spark-card {
+    background: var(--panel2); border-radius: 8px; padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .spark-label { font-size: 0.7rem; color: var(--muted); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .spark-val { font-size: 1.3rem; font-weight: 800; }
+
+  /* FLOW DIAGRAM */
+  .flow { display: flex; align-items: center; gap: 0; padding: 20px 16px; overflow-x: auto; }
+  .flow-step {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    min-width: 90px; text-align: center;
+  }
+  .flow-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+  }
+  .flow-step-label { font-size: 0.68rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; }
+  .flow-arrow { color: var(--border); font-size: 1.4rem; margin: 0 2px; padding-bottom: 18px; flex-shrink: 0; }
+
+  /* MASK PREVIEW */
+  .mask-preview { display: flex; flex-direction: column; gap: 10px; }
+  .mask-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    background: var(--panel2); border-radius: 8px; padding: 10px 14px;
+  }
+  .mask-field { font-size: 0.7rem; color: var(--muted); margin-bottom: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .mask-before { font-family: 'DM Mono', monospace; font-size: 0.78rem; }
+  .mask-after  { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--accent); }
+
+  /* SCHEMA */
+  .schema-table { display: flex; flex-direction: column; gap: 8px; }
+  .schema-col { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: var(--panel2); border-radius: 6px; }
+  .schema-name { font-family: 'DM Mono', monospace; font-size: 0.78rem; flex: 1; }
+  .schema-type { font-size: 0.65rem; color: var(--accent2); background: rgba(59,130,246,0.1); padding: 2px 7px; border-radius: 3px; font-family: 'DM Mono', monospace; }
+  .schema-sensitive { font-size: 0.65rem; color: var(--red); background: rgba(239,68,68,0.08); padding: 2px 7px; border-radius: 3px; }
+
+  /* TABS inside panel */
+  .inner-tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .inner-tab {
+    padding: 5px 12px; border-radius: 5px; cursor: pointer;
+    font-size: 0.74rem; font-weight: 600; color: var(--muted); transition: all 0.15s;
+  }
+  .inner-tab.active { color: var(--accent); background: rgba(0,212,170,0.1); }
+  .inner-tab:hover { color: var(--text); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* LOG TIMELINE */
+  .log-timeline { display: flex; flex-direction: column; gap: 0; }
+  .log-item { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid rgba(31,45,69,0.5); }
+  .log-item:last-child { border-bottom: none; }
+  .log-time { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); min-width: 78px; padding-top: 2px; }
+  .log-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .log-content { flex: 1; }
+  .log-action { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; }
+  .log-detail { font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* PAGE SECTIONS */
+  .page { display: none; }
+  .page.active { display: flex; flex-direction: column; gap: 20px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  /* FILTER BAR */
+  .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .filter-select {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 5px 10px; border-radius: 6px; font-size: 0.78rem; font-family: 'Syne', sans-serif;
+    cursor: pointer; outline: none;
+  }
+  .filter-label { font-size: 0.75rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span>FinPipeline BI</div>
+  <div class="tabs">
+    <div class="tab active" onclick="showPage('overview')">Overview</div>
+    <div class="tab" onclick="showPage('data')">Data Explorer</div>
+    <div class="tab" onclick="showPage('security')">Masking & Security</div>
+    <div class="tab" onclick="showPage('logs')">Audit Logs</div>
+    <div class="tab" onclick="showPage('schema')">Schema</div>
+  </div>
+  <div class="status"><div class="live-dot"></div>Pipeline Active · <span id="clock"></span></div>
+</div>
+
+<div class="main">
+
+<!-- ======== OVERVIEW PAGE ======== -->
+<div class="page active" id="page-overview">
+
+  <div class="kpi-row">
+    <div class="kpi-card green">
+      <div class="kpi-label">Total Records</div>
+      <div class="kpi-value" style="color:var(--accent)">3</div>
+      <div class="kpi-sub">customers ingested</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Raw Inserts</div>
+      <div class="kpi-value" style="color:var(--accent2)">3</div>
+      <div class="kpi-sub">→ customers_raw</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Masked Inserts</div>
+      <div class="kpi-value" style="color:#a855f7">3</div>
+      <div class="kpi-sub">→ customers_masked</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">Fields Masked</div>
+      <div class="kpi-value" style="color:var(--accent3)">3</div>
+      <div class="kpi-sub">email · phone · aadhaar</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Pipeline Errors</div>
+      <div class="kpi-value" style="color:var(--red)">0</div>
+      <div class="kpi-sub">last run clean</div>
+    </div>
+  </div>
+
+  <!-- Pipeline Flow -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Pipeline Architecture</div>
+      <div class="panel-badge">ingestor.py</div>
+    </div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(0,212,170,0.12)">📥</div>
+        <div style="font-weight:700;font-size:0.8rem">Load CSV</div>
+        <div class="flow-step-label">DataFrame</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(59,130,246,0.12)">✅</div>
+        <div style="font-weight:700;font-size:0.8rem">Validate</div>
+        <div class="flow-step-label">Schema Check</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(245,158,11,0.12)">🧹</div>
+        <div style="font-weight:700;font-size:0.8rem">Clean</div>
+        <div class="flow-step-label">Dedup · Impute</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(16,185,129,0.12)">🗄️</div>
+        <div style="font-weight:700;font-size:0.8rem">Insert Raw</div>
+        <div class="flow-step-label">customers_raw</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(168,85,247,0.12)">🔒</div>
+        <div style="font-weight:700;font-size:0.8rem">Mask</div>
+        <div class="flow-step-label">mask.py</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(239,68,68,0.12)">🗄️</div>
+        <div style="font-weight:700;font-size:0.8rem">Insert Masked</div>
+        <div class="flow-step-label">customers_masked</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(100,116,139,0.18)">📋</div>
+        <div style="font-weight:700;font-size:0.8rem">Log</div>
+        <div class="flow-step-label">access_logs</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-row two">
+    <!-- Bar chart: records per table -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Records per Table</div>
+        <div class="panel-badge">PostgreSQL</div>
+      </div>
+      <div class="panel-body">
+        <svg width="100%" height="180" viewBox="0 0 460 180">
+          <!-- grid lines -->
+          <line x1="60" y1="20" x2="440" y2="20" stroke="#1f2d45" stroke-width="1"/>
+          <line x1="60" y1="60" x2="440" y2="60" stroke="#1f2d45" stroke-width="1"/>
+          <line x1="60" y1="100" x2="440" y2="100" stroke="#1f2d45" stroke-width="1"/>
+          <line x1="60" y1="140" x2="440" y2="140" stroke="#1f2d45" stroke-width="1"/>
+          <!-- labels -->
+          <text x="50" y="23" fill="#64748b" font-size="10" text-anchor="end">3</text>
+          <text x="50" y="63" fill="#64748b" font-size="10" text-anchor="end">2</text>
+          <text x="50" y="103" fill="#64748b" font-size="10" text-anchor="end">1</text>
+          <text x="50" y="143" fill="#64748b" font-size="10" text-anchor="end">0</text>
+          <!-- bars -->
+          <rect class="bar" x="80" y="20" width="60" height="120" rx="5" fill="#00d4aa" opacity="0.9"/>
+          <rect class="bar" x="180" y="20" width="60" height="120" rx="5" fill="#a855f7" opacity="0.9"/>
+          <rect class="bar" x="280" y="80" width="60" height="60" rx="5" fill="#3b82f6" opacity="0.9"/>
+          <rect class="bar" x="380" y="92" width="60" height="48" rx="5" fill="#f59e0b" opacity="0.9"/>
+          <!-- x labels -->
+          <text x="110" y="170" fill="#64748b" font-size="9" text-anchor="middle">customers_raw</text>
+          <text x="210" y="170" fill="#64748b" font-size="9" text-anchor="middle">customers_masked</text>
+          <text x="310" y="170" fill="#64748b" font-size="9" text-anchor="middle">loans_raw</text>
+          <text x="410" y="170" fill="#64748b" font-size="9" text-anchor="middle">access_logs</text>
+          <!-- values above bars -->
+          <text x="110" y="14" fill="#00d4aa" font-size="11" text-anchor="middle" font-weight="bold">3</text>
+          <text x="210" y="14" fill="#a855f7" font-size="11" text-anchor="middle" font-weight="bold">3</text>
+          <text x="310" y="74" fill="#3b82f6" font-size="11" text-anchor="middle" font-weight="bold">2</text>
+          <text x="410" y="86" fill="#f59e0b" font-size="11" text-anchor="middle" font-weight="bold">4</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Donut: field coverage -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Schema Field Coverage</div>
+        <div class="panel-badge">customers</div>
+      </div>
+      <div class="panel-body">
+        <div class="donut-wrap">
+          <svg width="130" height="130" viewBox="0 0 130 130">
+            <!-- donut arcs (pre-calc) 8 cols: 5 non-sensitive, 3 sensitive -->
+            <!-- Full circle = 314 (circumference r=50) -->
+            <!-- 5/8 = 196 gap=118 -->
+            <circle cx="65" cy="65" r="50" fill="none" stroke="#1f2d45" stroke-width="16"/>
+            <circle cx="65" cy="65" r="50" fill="none" stroke="#00d4aa" stroke-width="16"
+              stroke-dasharray="196 118" stroke-dashoffset="78" stroke-linecap="round"/>
+            <circle cx="65" cy="65" r="50" fill="none" stroke="#ef4444" stroke-width="16"
+              stroke-dasharray="118 196" stroke-dashoffset="-118" stroke-linecap="round"/>
+            <text x="65" y="61" fill="#e2e8f0" font-size="18" font-weight="800" text-anchor="middle">8</text>
+            <text x="65" y="76" fill="#64748b" font-size="9" text-anchor="middle">columns</text>
+          </svg>
+          <div class="donut-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div><span class="legend-label">Plain text</span><span class="legend-val" style="color:var(--accent)">5</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div><span class="legend-label">Sensitive (PII)</span><span class="legend-val" style="color:var(--red)">3</span></div>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="progress-row">
+            <div class="progress-info"><span>Mask coverage</span><span style="color:var(--accent);font-family:'DM Mono',monospace">100%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--accent)"></div></div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-info"><span>Null imputation</span><span style="color:var(--accent2);font-family:'DM Mono',monospace">100%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--accent2)"></div></div>
+          </div>
+          <div class="progress-row" style="margin-bottom:0">
+            <div class="progress-info"><span>Duplicate removal</span><span style="color:var(--accent3);font-family:'DM Mono',monospace">0 found</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:2%;background:var(--accent3)"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /overview -->
+
+
+<!-- ======== DATA EXPLORER PAGE ======== -->
+<div class="page" id="page-data">
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Customer Records</div>
+      <div style="display:flex;gap:8px">
+        <div class="panel-badge">customers_raw</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="inner-tabs">
+        <div class="inner-tab active" onclick="switchTab(this,'tab-raw')">Raw</div>
+        <div class="inner-tab" onclick="switchTab(this,'tab-masked')">Masked</div>
+      </div>
+      <div class="tab-content active" id="tab-raw">
+        <table>
+          <thead><tr>
+            <th>customer_id</th><th>full_name</th><th>aadhaar_number</th>
+            <th>email</th><th>phone_number</th><th>address</th><th>dob</th><th>gender</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td>1</td><td>John Doe</td><td style="color:#f59e0b">1234-5678-9012</td>
+              <td style="color:#f59e0b">john.doe@example.com</td><td style="color:#f59e0b">9876543210</td>
+              <td>123 Main St</td><td>1990-01-01</td><td>Male</td>
+            </tr>
+            <tr>
+              <td>2</td><td>Jane Smith</td><td style="color:#f59e0b">9876-5432-1098</td>
+              <td style="color:#f59e0b">jane.smith@example.com</td><td style="color:#f59e0b">9876543211</td>
+              <td>456 Side St</td><td>1995-05-05</td><td>Female</td>
+            </tr>
+            <tr>
+              <td>3</td><td>Ram Kumar</td><td style="color:#f59e0b">1111-2222-3333</td>
+              <td style="color:#f59e0b">ram.kumar@example.com</td><td style="color:#f59e0b">8765432109</td>
+              <td>789 High St</td><td>1985-11-20</td><td>Male</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">⚠️ Sensitive fields highlighted — visible only to <span style="color:#a855f7">data_engineer</span> / <span style="color:#3b82f6">senior_dev</span> roles</div>
+      </div>
+      <div class="tab-content" id="tab-masked">
+        <table>
+          <thead><tr>
+            <th>customer_id</th><th>full_name</th><th>aadhaar_number</th>
+            <th>email</th><th>phone_number</th><th>address</th><th>dob</th><th>gender</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td>1</td><td>John Doe</td><td style="color:var(--accent)">****-****-9012</td>
+              <td style="color:var(--accent)">j*****@example.com</td><td style="color:var(--accent)">******3210</td>
+              <td>123 Main St</td><td>1990-01-01</td><td>Male</td>
+            </tr>
+            <tr>
+              <td>2</td><td>Jane Smith</td><td style="color:var(--accent)">****-****-1098</td>
+              <td style="color:var(--accent)">j*****@example.com</td><td style="color:var(--accent)">******3211</td>
+              <td>456 Side St</td><td>1995-05-05</td><td>Female</td>
+            </tr>
+            <tr>
+              <td>3</td><td>Ram Kumar</td><td style="color:var(--accent)">****-****-3333</td>
+              <td style="color:var(--accent)">r*****@example.com</td><td style="color:var(--accent)">******2109</td>
+              <td>789 High St</td><td>1985-11-20</td><td>Male</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">✅ PII masked via <span style="color:var(--accent);font-family:'DM Mono',monospace">mask.py</span> — safe for downstream use</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Data Quality Metrics</div>
+      <div class="panel-badge">clean()</div>
+    </div>
+    <div class="panel-body">
+      <div class="sparkline-row">
+        <div class="spark-card">
+          <div class="spark-label">Rows Before Clean</div>
+          <div class="spark-val" style="color:var(--accent2)">3</div>
+        </div>
+        <div class="spark-card">
+          <div class="spark-label">Rows After Clean</div>
+          <div class="spark-val" style="color:var(--accent)">3</div>
+        </div>
+        <div class="spark-card">
+          <div class="spark-label">Duplicates Dropped</div>
+          <div class="spark-val" style="color:var(--accent3)">0</div>
+        </div>
+        <div class="spark-card">
+          <div class="spark-label">Nulls Imputed</div>
+          <div class="spark-val" style="color:#a855f7">0</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;font-size:0.78rem;color:var(--muted)">
+        Cleaning strategy: string → strip + fill <code style="color:var(--accent)">'unknown'</code> · numeric → median · datetime → <code style="color:var(--accent)">1900-01-01</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ======== SECURITY PAGE ======== -->
+<div class="page" id="page-security">
+
+  <div class="grid-row half">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Masking Rules</div>
+        <div class="panel-badge">mask.py</div>
+      </div>
+      <div class="panel-body">
+        <div class="mask-preview">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;font-size:0.68rem;color:var(--muted);font-weight:700;letter-spacing:0.06em;text-transform:uppercase">
+            <span>ORIGINAL</span><span>MASKED</span>
+          </div>
+
+          <div style="font-size:0.72rem;color:var(--accent3);margin-bottom:4px;font-weight:700">📧 Email — mask_email()</div>
+          <div class="mask-row">
+            <div><div class="mask-field">before</div><div class="mask-before">john.doe@example.com</div></div>
+            <div><div class="mask-field">after</div><div class="mask-after">j*****@example.com</div></div>
+          </div>
+
+          <div style="font-size:0.72rem;color:var(--accent3);margin:10px 0 4px;font-weight:700">📞 Phone — mask_phone()</div>
+          <div class="mask-row">
+            <div><div class="mask-field">before</div><div class="mask-before">9876543210</div></div>
+            <div><div class="mask-field">after</div><div class="mask-after">******3210</div></div>
+          </div>
+
+          <div style="font-size:0.72rem;color:var(--accent3);margin:10px 0 4px;font-weight:700">🪪 Aadhaar — mask_aadhaar()</div>
+          <div class="mask-row">
+            <div><div class="mask-field">before</div><div class="mask-before">1234-5678-9012</div></div>
+            <div><div class="mask-field">after</div><div class="mask-after">****-****-9012</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Role Access Control</div>
+        <div class="panel-badge">login()</div>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Role</th><th>Raw Table</th><th>Masked Table</th><th>Logs</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="badge role-de">data_engineer</span></td>
+              <td><span class="badge ok">✓ Read/Write</span></td>
+              <td><span class="badge ok">✓ Read/Write</span></td>
+              <td><span class="badge ok">✓</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge role-sd">senior_dev</span></td>
+              <td><span class="badge ok">✓ Read/Write</span></td>
+              <td><span class="badge ok">✓ Read/Write</span></td>
+              <td><span class="badge ok">✓</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge" style="background:rgba(100,116,139,0.1);color:#94a3b8">other</span></td>
+              <td><span class="badge error">✗ Denied</span></td>
+              <td><span class="badge error">✗ Denied</span></td>
+              <td><span class="badge error">✗</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:16px">
+          <div class="progress-row">
+            <div class="progress-info"><span>Aadhaar masked</span><span style="color:var(--accent);font-family:'DM Mono',monospace">3 / 3</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--accent)"></div></div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-info"><span>Email masked</span><span style="color:var(--accent);font-family:'DM Mono',monospace">3 / 3</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--accent)"></div></div>
+          </div>
+          <div class="progress-row" style="margin-bottom:0">
+            <div class="progress-info"><span>Phone masked</span><span style="color:var(--accent);font-family:'DM Mono',monospace">3 / 3</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--accent)"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug note panel -->
+  <div class="panel" style="border-color:rgba(245,158,11,0.3)">
+    <div class="panel-header" style="border-color:rgba(245,158,11,0.2)">
+      <div class="panel-title" style="color:var(--accent3)">⚠️ Code Issues Detected</div>
+      <div class="panel-badge" style="background:rgba(245,158,11,0.1);color:var(--accent3)">mask.py</div>
+    </div>
+    <div class="panel-body">
+      <table>
+        <thead><tr><th>File</th><th>Issue</th><th>Column Check</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span style="color:var(--accent);font-family:'DM Mono',monospace">mask.py</span></td>
+            <td>Checks <code style="color:var(--red)">'phone'</code> but column is <code style="color:var(--accent)">phone_number</code></td>
+            <td><span class="badge warn">Wrong key</span></td>
+            <td><code style="color:var(--accent);font-size:0.75rem">if 'phone_number' in df.columns</code></td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--accent);font-family:'DM Mono',monospace">mask.py</span></td>
+            <td>Checks <code style="color:var(--red)">'aadhaar'</code> but column is <code style="color:var(--accent)">aadhaar_number</code></td>
+            <td><span class="badge warn">Wrong key</span></td>
+            <td><code style="color:var(--accent);font-size:0.75rem">if 'aadhaar_number' in df.columns</code></td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--accent);font-family:'DM Mono',monospace">ingestor.py</span></td>
+            <td>DB connect uses <code style="color:var(--red)">db=</code> instead of <code style="color:var(--accent)">dbname=</code></td>
+            <td><span class="badge error">Runtime Error</span></td>
+            <td><code style="color:var(--accent);font-size:0.75rem">dbname='fintech'</code></td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--accent);font-family:'DM Mono',monospace">ingestor.py</span></td>
+            <td>log() passes <code style="color:var(--red)">None</code> as table on Login</td>
+            <td><span class="badge warn">NoneType</span></td>
+            <td><code style="color:var(--accent);font-size:0.75rem">table_name = table or 'system'</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ======== LOGS PAGE ======== -->
+<div class="page" id="page-logs">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Audit Log Timeline</div>
+      <div class="panel-badge">access_logs</div>
+    </div>
+    <div class="panel-body">
+      <div class="log-timeline">
+        <div class="log-item">
+          <div class="log-time">09:00:01</div>
+          <div class="log-dot" style="background:var(--success)"></div>
+          <div class="log-content">
+            <div class="log-action">Login <span class="badge ok">success</span></div>
+            <div class="log-detail">user: data_eng_01 · role: data_engineer · table: system</div>
+          </div>
+        </div>
+        <div class="log-item">
+          <div class="log-time">09:00:03</div>
+          <div class="log-dot" style="background:var(--accent2)"></div>
+          <div class="log-content">
+            <div class="log-action">Clean and Insert Raw Data <span class="badge raw">raw</span></div>
+            <div class="log-detail">user: data_eng_01 · table: customers_raw · rows: 3</div>
+          </div>
+        </div>
+        <div class="log-item">
+          <div class="log-time">09:00:04</div>
+          <div class="log-dot" style="background:#a855f7"></div>
+          <div class="log-content">
+            <div class="log-action">Mask and Insert Masked Data <span class="badge masked">masked</span></div>
+            <div class="log-detail">user: data_eng_01 · table: customers_masked · rows: 3</div>
+          </div>
+        </div>
+        <div class="log-item">
+          <div class="log-time">09:01:10</div>
+          <div class="log-dot" style="background:var(--success)"></div>
+          <div class="log-content">
+            <div class="log-action">Login <span class="badge ok">success</span></div>
+            <div class="log-detail">user: senior_dev_02 · role: senior_dev · table: system</div>
+          </div>
+        </div>
+        <div class="log-item">
+          <div class="log-time">09:05:22</div>
+          <div class="log-dot" style="background:var(--red)"></div>
+          <div class="log-content">
+            <div class="log-action">Login Attempt <span class="badge error">denied</span></div>
+            <div class="log-detail">user: analyst_03 · role: analyst · reason: unauthorized role</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ======== SCHEMA PAGE ======== -->
+<div class="page" id="page-schema">
+  <div class="grid-row half">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">customers</div>
+        <div class="panel-badge">8 columns</div>
+      </div>
+      <div class="panel-body">
+        <div class="schema-table">
+          <div class="schema-col"><div class="schema-name">customer_id</div><div class="schema-type">INT PK</div></div>
+          <div class="schema-col"><div class="schema-name">full_name</div><div class="schema-type">VARCHAR</div></div>
+          <div class="schema-col"><div class="schema-name">aadhaar_number</div><div class="schema-type">VARCHAR</div><div class="schema-sensitive">PII</div></div>
+          <div class="schema-col"><div class="schema-name">email</div><div class="schema-type">VARCHAR</div><div class="schema-sensitive">PII</div></div>
+          <div class="schema-col"><div class="schema-name">phone_number</div><div class="schema-type">VARCHAR</div><div class="schema-sensitive">PII</div></div>
+          <div class="schema-col"><div class="schema-name">address</div><div class="schema-type">TEXT</div></div>
+          <div class="schema-col"><div class="schema-name">date_of_birth</div><div class="schema-type">DATE</div></div>
+          <div class="schema-col"><div class="schema-name">gender</div><div class="schema-type">VARCHAR</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">loans</div>
+        <div class="panel-badge">7 columns</div>
+      </div>
+      <div class="panel-body">
+        <div class="schema-table">
+          <div class="schema-col"><div class="schema-name">loan_id</div><div class="schema-type">INT PK</div></div>
+          <div class="schema-col"><div class="schema-name">customer_id</div><div class="schema-type">INT FK</div></div>
+          <div class="schema-col"><div class="schema-name">loan_amount</div><div class="schema-type">DECIMAL</div></div>
+          <div class="schema-col"><div class="schema-name">interest_rate</div><div class="schema-type">FLOAT</div></div>
+          <div class="schema-col"><div class="schema-name">term_months</div><div class="schema-type">INT</div></div>
+          <div class="schema-col"><div class="schema-name">loan_type</div><div class="schema-type">VARCHAR</div></div>
+          <div class="schema-col"><div class="schema-name">approval_date</div><div class="schema-type">DATE</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Target Tables (PostgreSQL)</div>
+      <div class="panel-badge">fintech DB</div>
+    </div>
+    <div class="panel-body">
+      <table>
+        <thead><tr><th>Table</th><th>Source</th><th>PII Fields</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><code style="color:var(--accent2)">customers_raw</code></td><td>ingestor.py → insert_cleaned()</td><td><span class="badge warn">3 exposed</span></td><td><span class="badge ok">active</span></td></tr>
+          <tr><td><code style="color:var(--accent)">customers_masked</code></td><td>ingestor.py → insert_masked()</td><td><span class="badge ok">0 exposed</span></td><td><span class="badge ok">active</span></td></tr>
+          <tr><td><code style="color:var(--accent2)">loans_raw</code></td><td>ingestor.py (schema defined)</td><td><span class="badge ok">0</span></td><td><span class="badge" style="background:rgba(100,116,139,0.1);color:#94a3b8">no data yet</span></td></tr>
+          <tr><td><code style="color:var(--muted)">access_logs</code></td><td>ingestor.py → log()</td><td><span class="badge ok">0</span></td><td><span class="badge ok">active</span></td></tr>
+          <tr><td><code style="color:var(--muted)">users</code></td><td>pre-existing (auth)</td><td><span class="badge warn">passwords</span></td><td><span class="badge warn">plaintext ⚠</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+</div><!-- /main -->
+
+<script>
+// Clock
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+setInterval(updateClock, 1000); updateClock();
+
+// Page navigation
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Inner tabs
+function switchTab(el, targetId) {
+  const panel = el.closest('.panel-body');
+  panel.querySelectorAll('.inner-tab').forEach(t => t.classList.remove('active'));
+  panel.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(targetId).classList.add('active');
+}
+</script>
+</body>
+</html>
